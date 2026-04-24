@@ -50,8 +50,7 @@ jobs:
           lines.append("## Semgrep SAST Report\n")
 
           status = "FAILED" if errors else "PASSED"
-          badge  = "🔴" if errors else "🟢"
-          lines.append(f"{badge} **Build status: {status}**  ")
+          lines.append(f"**Build status: {status}**  ")
           lines.append(f"Total findings: **{len(results)}** &nbsp;|&nbsp; "
                        f"ERROR (blocking): **{len(errors)}** &nbsp;|&nbsp; "
                        f"WARNING: **{len(warnings)}**\n")
