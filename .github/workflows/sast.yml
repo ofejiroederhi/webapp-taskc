@@ -7,21 +7,46 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  security-scan:
+  semgrep-scan:
+    name: Semgrep Scan
     runs-on: ubuntu-latest
-    permissions:
-      security-events: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Run Semgrep (OWASP Top 10)
-        uses: returntocorp/semgrep-action@v1
-        with:
-          config: "p/owasp-top-ten"
+      - name: Install Semgrep
+        run: pip install semgrep
 
-      - name: Run Semgrep (custom rules)
-        uses: returntocorp/semgrep-action@v1
+      # Three rulesets:
+      #   p/owasp-top-ten   — OWASP Top 10 community rules
+      #   p/flask           — Flask-specific rules (secret key, insecure cookies, debug mode)
+      #   custom-rules.yaml — org policy banning MD5 / SHA-1
+      - name: Run Semgrep and export JSON report
+        run: |
+          semgrep scan \
+            --config="p/owasp-top-ten" \
+            --config="p/flask" \
+            --config="custom-rules.yaml" \
+            --json -o semgrep-report.json
+        continue-on-error: true
+
+      - name: Upload Semgrep audit report
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
-          config: "custom-rules.yaml"
+          name: semgrep-audit-report
+          path: semgrep-report.json
+
+      - name: Fail build on blocking findings
+        run: |
+          python - <<'EOF'
+          import json, sys
+          with open("semgrep-report.json") as f:
+              report = json.load(f)
+          errors = [r for r in report.get("results", []) if r.get("extra", {}).get("severity") == "ERROR"]
+          if errors:
+              print(f"BUILD FAILED: {len(errors)} ERROR-level finding(s).")
+              sys.exit(1)
+          print("No ERROR-level findings. Build passed.")
+          EOF

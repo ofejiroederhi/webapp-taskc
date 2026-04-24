@@ -1,29 +1,14 @@
 rules:
-  - id: use-of-md5
-    patterns:
-      - pattern: hashlib.md5(...)
-    message: >
-      MD5 is a cryptographically broken hash function (collision attacks published 1996).
-      Do not use MD5 for passwords, signatures, or integrity checks.
-      Replace with hashlib.sha256() for general digests, or bcrypt/argon2 for passwords.
-    languages: [python]
+  - id: internal-ban-md5-hashing
+    languages:
+      - python
+    message: "SECURITY VIOLATION: MD5 is cryptographically broken and banned by corporate policy. Use hashlib.sha256() instead."
     severity: ERROR
-    metadata:
-      category: security
-      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
-      owasp: "A02:2021 - Cryptographic Failures"
-      confidence: HIGH
+    pattern: hashlib.md5(...)
 
-  - id: use-of-sha1
-    patterns:
-      - pattern: hashlib.sha1(...)
-    message: >
-      SHA-1 is deprecated for security use (collision demonstrated 2017).
-      Replace with hashlib.sha256() or stronger.
-    languages: [python]
+  - id: internal-ban-sha1-hashing
+    languages:
+      - python
+    message: "SECURITY VIOLATION: SHA-1 is deprecated for security use. Use hashlib.sha256() or stronger."
     severity: WARNING
-    metadata:
-      category: security
-      cwe: "CWE-327: Use of a Broken or Risky Cryptographic Algorithm"
-      owasp: "A02:2021 - Cryptographic Failures"
-      confidence: HIGH
+    pattern: hashlib.sha1(...)
