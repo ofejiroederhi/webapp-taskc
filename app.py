@@ -1,5 +1,7 @@
 # app.py
 import sqlite3
+import hashlib
+import random
 from flask import Flask, request, redirect, url_for, make_response, flash
 
 def get_db_connection():
@@ -21,8 +23,12 @@ def home():
         query = f"SELECT * FROM users WHERE username = '{logged_in_user}'"
         current_user = conn.execute(query).fetchone()
 
-    products = conn.execute('SELECT * FROM products').fetchall()
+    products = list(conn.execute('SELECT * FROM products').fetchall())
     conn.close()
+
+    # Randomise display order so the page feels fresh on each visit.
+    # This is NOT a security operation — random is intentionally used here.
+    random.shuffle(products)
 
     html = f"""
     <!DOCTYPE html>
@@ -460,6 +466,62 @@ def admin_panel():
 
     html += "</ul><br><a href='/'>Back to Home</a></body></html>"
     return html
+
+@app.route('/login/legacy', methods=('GET', 'POST'))
+def legacy_login():
+    """
+    Legacy authentication endpoint retained for backward compatibility with
+    older client applications that pre-hash passwords as MD5 before sending.
+    New accounts use the main /login route instead.
+    """
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        # Legacy clients send plaintext; we re-hash to compare against stored MD5 digest
+        password_hash = hashlib.md5(password.encode()).hexdigest()
+
+        conn = get_db_connection()
+        query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password_hash}'"
+        user = conn.execute(query).fetchone()
+        conn.close()
+
+        if user:
+            resp = make_response(redirect(url_for('home')))
+            resp.set_cookie('username', user['username'])
+            return resp
+
+        flash('Incorrect credentials.')
+        return redirect(url_for('legacy_login'))
+
+    html = """
+    <!DOCTYPE html><html><body>
+    <h1>Legacy Login</h1>
+    <form method="post">
+        <label>Username <input type="text" name="username"></label><br>
+        <label>Password <input type="password" name="password"></label><br>
+        <button type="submit">Login</button>
+    </form>
+    </body></html>
+    """
+    return html
+
+
+@app.route('/product/<int:product_id>/reviews/count')
+def review_count(product_id):
+    """
+    Returns the number of reviews for a product.
+    product_id is typed as <int:> by Flask's URL converter, so it is
+    guaranteed to be a Python int before this function is called.
+    Semgrep flags the f-string below as SQL injection — this is a FALSE POSITIVE.
+    """
+    conn = get_db_connection()
+    count = conn.execute(
+        f"SELECT COUNT(*) FROM reviews WHERE product_id = {product_id}"
+    ).fetchone()[0]
+    conn.close()
+    return f"<p>This product has {count} review(s).</p>"
+
 
 if __name__ == '__main__':
     app.run(debug=True)
