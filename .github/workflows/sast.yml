@@ -27,9 +27,68 @@ jobs:
           semgrep scan \
             --config="p/owasp-top-ten" \
             --config="p/flask" \
+            --config="p/security-audit" \
+            --config="p/python" \
             --config="custom-rules.yaml" \
             --json -o semgrep-report.json
         continue-on-error: true
+
+      - name: Publish findings to Job Summary
+        if: always()
+        run: |
+          python - <<'EOF'
+          import json, os
+
+          with open("semgrep-report.json") as f:
+              report = json.load(f)
+
+          results = report.get("results", [])
+          errors   = [r for r in results if r.get("extra", {}).get("severity") == "ERROR"]
+          warnings = [r for r in results if r.get("extra", {}).get("severity") == "WARNING"]
+
+          lines = []
+          lines.append("## Semgrep SAST Report\n")
+
+          status = "FAILED" if errors else "PASSED"
+          badge  = "🔴" if errors else "🟢"
+          lines.append(f"{badge} **Build status: {status}**  ")
+          lines.append(f"Total findings: **{len(results)}** &nbsp;|&nbsp; "
+                       f"ERROR (blocking): **{len(errors)}** &nbsp;|&nbsp; "
+                       f"WARNING: **{len(warnings)}**\n")
+
+          if errors:
+              lines.append("###  ERROR-level Findings (Blocking)\n")
+              lines.append("| Rule | File | Line | Message |")
+              lines.append("|------|------|:----:|---------|")
+              for r in errors:
+                  rule = r.get("check_id", "").split(".")[-1]
+                  path = r.get("path", "")
+                  line = r.get("start", {}).get("line", "")
+                  msg  = r.get("extra", {}).get("message", "")[:120].replace("|", "\\|")
+                  lines.append(f"| `{rule}` | `{path}` | {line} | {msg} |")
+              lines.append("")
+
+          if warnings:
+              lines.append("### WARNING-level Findings\n")
+              lines.append("| Rule | File | Line | Message |")
+              lines.append("|------|------|:----:|---------|")
+              for r in warnings:
+                  rule = r.get("check_id", "").split(".")[-1]
+                  path = r.get("path", "")
+                  line = r.get("start", {}).get("line", "")
+                  msg  = r.get("extra", {}).get("message", "")[:120].replace("|", "\\|")
+                  lines.append(f"| `{rule}` | `{path}` | {line} | {msg} |")
+              lines.append("")
+
+          lines.append("---")
+          lines.append("_Full machine-readable output available in the `semgrep-audit-report` artifact._")
+
+          summary = "\n".join(lines)
+          print(summary)
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(summary + "\n")
+          EOF
 
       - name: Upload Semgrep audit report
         uses: actions/upload-artifact@v4

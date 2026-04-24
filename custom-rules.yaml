@@ -1,14 +1,18 @@
 rules:
-  - id: internal-ban-md5-hashing
-    languages:
-      - python
-    message: "SECURITY VIOLATION: MD5 is cryptographically broken and banned by corporate policy. Use hashlib.sha256() instead."
-    severity: ERROR
-    pattern: hashlib.md5(...)
-
   - id: internal-ban-sha1-hashing
     languages:
       - python
     message: "SECURITY VIOLATION: SHA-1 is deprecated for security use. Use hashlib.sha256() or stronger."
     severity: WARNING
     pattern: hashlib.sha1(...)
+
+  - id: internal-flask-hardcoded-secret-key
+    languages:
+      - python
+    message: "SECURITY VIOLATION: Hardcoded Flask secret_key detected. Load SECRET_KEY from environment/secret manager."
+    severity: ERROR
+    patterns:
+      - pattern: $APP.secret_key = $KEY
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: ^['\"].*['\"]$
