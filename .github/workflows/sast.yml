@@ -69,9 +69,7 @@ jobs:
 
           status = "FAILED" if errors else "PASSED"
           lines.append(f"**Build status: {status}**  ")
-          lines.append(f"Total findings: **{len(results)}** &nbsp;|&nbsp; "
-                       f"ERROR (blocking): **{len(errors)}** &nbsp;|&nbsp; "
-                       f"WARNING: **{len(warnings)}**\n")
+          lines.append(f"Total findings: **{len(results)}** | ERROR (blocking): **{len(errors)}** | WARNING: **{len(warnings)}**\n")
 
           if errors:
               lines.append("### ERROR-level Findings (Blocking)\n")
