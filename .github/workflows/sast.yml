@@ -2,9 +2,9 @@ name: Automated SAST (Semgrep)
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: [ "main", "dev" ]
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "main", "dev" ]
 
 # Required for uploading SARIF to GitHub Code Scanning.
 permissions:
