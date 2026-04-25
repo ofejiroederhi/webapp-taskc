@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ "main", "master" ]
 
-# Required for uploading SARIF to GitHub Code Scanning
+# Required for uploading SARIF to GitHub Code Scanning.
 permissions:
   contents: read
   security-events: write
